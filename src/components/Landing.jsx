@@ -42,8 +42,7 @@ export default function Landing() {
             </Text>{' '}
           </Heading>
           <Text fontSize={{ base: 'md', lg: 'lg' }} color={'gray.500'}>
-            ScanToEat app is made for ease and better convenience of students,
-            teachers as well as the Canteen staff.
+            Students & Facultys Canteen App Amritha vidya peetham  Chennai .
           </Text>
           <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
             <Button
