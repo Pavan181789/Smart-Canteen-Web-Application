@@ -24,3 +24,9 @@ yarn-debug.log*
 yarn-error.log*
 
 
+
+backend/functions/*.json
+
+*.service-account.json
+
+.env
