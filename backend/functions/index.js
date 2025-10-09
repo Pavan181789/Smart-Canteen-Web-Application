@@ -2,19 +2,26 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const serviceAccount = require('./smart-canteen-475bf-firebase-adminsdk-xw1s2-e1b58fd442.json');
 
+// Import AI functions
+require('./aiFunctions');
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
 const db = admin.firestore();
+// Allowed email domains for signup
+const ALLOWED_DOMAINS = ['@gmail.com', '@amrita.edu'];
 
 exports.validateVesEmail = functions.auth
   .user()
   .beforeCreate((user, context) => {
-    if (!user.email || !user.email.includes('@ves.ac.in')) {
+    const email = (user.email || '').toLowerCase();
+    const allowed = ALLOWED_DOMAINS.some(domain => email.endsWith(domain));
+    if (!allowed) {
       throw new functions.auth.HttpsError(
         'invalid-argument',
-        `Unauthorized email "${user.email}"`
+        `Unauthorized email "${user.email}". Allowed domains: ${ALLOWED_DOMAINS.join(', ')}`
       );
     }
   });

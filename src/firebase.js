@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'; // Added GoogleAuthProvider import
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,16 +17,16 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 
-// Firebase services
+// Initialize Firebase App Check ASAP (before using other services)
+export const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('6Ld75-MrAAAAAKsvA99UfXcJTt0kHBOZpycAkhsI'),
+  isTokenAutoRefreshEnabled: true,
+});
+
+// Firebase services (after App Check init)
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider(); // Export GoogleAuthProvider for Google authentication
 export const db = getFirestore(app);
 export const analytics = getAnalytics(app);
-
-/*
-  Emulator Configuration (if needed)
-*/
-// Example:
-// connectAuthEmulator(auth, 'http://localhost:9099');

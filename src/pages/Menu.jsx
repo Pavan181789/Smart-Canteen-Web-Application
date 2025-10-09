@@ -35,6 +35,8 @@ export default function Profile() {
 
   // State to manage the selected category
   const [selectedCategory, setSelectedCategory] = useState(Object.keys(MENU_SECTIONS)[0]);
+  // Veg mode: 'all' | 'veg' | 'nonveg'
+  const [vegMode, setVegMode] = useState('all');
 
   // Handle resizing for responsive UI
   useLayoutEffect(() => {
@@ -48,6 +50,25 @@ export default function Profile() {
   // Set document title
   useEffect(() => {
     document.title = 'Your Menu';
+  }, []);
+
+  // Listen for chatbot events to sync UI (section and veg mode)
+  useEffect(() => {
+    function onSection(e) {
+      const section = e?.detail;
+      if (section && MENU_SECTIONS[section]) setSelectedCategory(section);
+    }
+    function onVeg(e) {
+      const mode = e?.detail;
+      if (mode === 'veg' || mode === 'nonveg' || mode === 'all') setVegMode(mode);
+      // default to 'veg'/'nonveg' if provided, otherwise ignore
+    }
+    window.addEventListener('setMenuSection', onSection);
+    window.addEventListener('setVegMode', onVeg);
+    return () => {
+      window.removeEventListener('setMenuSection', onSection);
+      window.removeEventListener('setVegMode', onVeg);
+    };
   }, []);
 
   // Fetch menu items from Firestore and set the menu state
@@ -70,20 +91,21 @@ export default function Profile() {
       .catch((err) => console.error('Error fetching menu:', err));
   }, [setMenu]); // Added setMenu as dependency
 
-  // Fetch the user's wallet details
+  // Fetch the user's wallet details (guard until user is ready)
   useEffect(() => {
     async function fetchWallet() {
       try {
+        if (!user?.uid) return; // guard
         const userData = await getDoc(doc(db, 'users', user.uid));
         const walletAmount = userData.get('wallet');
-        setWallet(walletAmount);
+        setWallet(walletAmount ?? 0);
       } catch (err) {
         console.error('Failed to fetch wallet:', err);
       }
     }
 
     fetchWallet();
-  }, [user, setWallet]); // Added setWallet to dependency array
+  }, [user?.uid, setWallet]); // depend on uid
 
   // Increment the cart count and update state
   function incrementCart(id) {
@@ -115,7 +137,7 @@ export default function Profile() {
   return (
     <>
       <Nav
-        title={`Welcome, ${user.displayName}`}
+        title={`Welcome, ${user?.displayName || 'Guest'}`}
         navBtn={<ProfileNavBtn />}
         hasCheckout
       />
@@ -124,6 +146,13 @@ export default function Profile() {
           Menu ({menu.length})
         </Text>
       </Box>
+
+      {/* Veg / Non-veg Toggle */}
+      <HStack spacing={4} justify="center" marginTop={6}>
+        <Button size="md" colorScheme={vegMode === 'all' ? 'teal' : 'gray'} onClick={() => setVegMode('all')}>All</Button>
+        <Button size="md" colorScheme={vegMode === 'veg' ? 'teal' : 'gray'} onClick={() => setVegMode('veg')}>Veg</Button>
+        <Button size="md" colorScheme={vegMode === 'nonveg' ? 'teal' : 'gray'} onClick={() => setVegMode('nonveg')}>Non-veg</Button>
+      </HStack>
 
       {/* Render the section selector */}
       <HStack spacing={4} justify="center" marginY={6}>
@@ -150,7 +179,14 @@ export default function Profile() {
           w="100%"
         >
           {menu
-            .filter((item) => item.category === selectedCategory) // Filter items by selected category
+            .filter((item) => item.category === selectedCategory)
+            .filter((item) => {
+              if (vegMode === 'all') return true;
+              const name = (item.itemName || '').toLowerCase();
+              const isNonVeg = /(chicken|mutton|fish|egg|beef|prawn|shrimp)/i.test(name);
+              const tag = item.veg ? String(item.veg).toLowerCase() : (isNonVeg ? 'nonveg' : 'veg');
+              return vegMode === 'veg' ? tag === 'veg' : tag === 'nonveg';
+            })
             .map((item, index) => (
               <MenuCard
                 key={index}
