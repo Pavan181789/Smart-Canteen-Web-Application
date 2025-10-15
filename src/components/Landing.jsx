@@ -2,10 +2,10 @@ import {
   Button,
   Flex,
   Heading,
-  Image,
   Stack,
   Text,
   useBreakpointValue,
+  Box,
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 import React, { useEffect } from 'react';
@@ -16,9 +16,24 @@ export default function Landing() {
   });
 
   return (
-    <Stack minH={'100vh'} direction={{ base: 'column', md: 'row' }}>
-      <Flex p={8} flex={1} align={'center'} justify={'center'}>
-        <Stack spacing={6} w={'full'} maxW={'lg'}>
+    <Box position="relative" minH={'100vh'}>
+      {/* Full-page background video */}
+      <Box position="absolute" inset={0} zIndex={0} overflow="hidden">
+        <video
+          src="https://webfiles.amrita.edu/2025/02/amrita-vishwa-vidyapeetham-chennaicampus-banner.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        {/* Optional dark overlay for text readability */}
+        <Box position="absolute" inset={0} bg="blackAlpha.600" />
+      </Box>
+
+      {/* Foreground content */}
+      <Flex position="relative" zIndex={1} p={8} align={'center'} justify={'flex-start'} minH={'100vh'}>
+        <Stack spacing={6} w={'full'} maxW={'lg'} ml={{ base: 0, md: 4 }}>
           <Heading fontSize={{ base: '3xl', md: '4xl', lg: '5xl' }}>
             <Text
               as={'span'}
@@ -41,7 +56,7 @@ export default function Landing() {
               for colleges
             </Text>{' '}
           </Heading>
-          <Text fontSize={{ base: 'md', lg: 'lg' }} color={'gray.500'}>
+          <Text fontSize={{ base: 'md', lg: 'lg' }} color={'gray.200'}>
             Students & Facultys Canteen App Amritha vidya peetham  Chennai .
           </Text>
           <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
@@ -58,16 +73,6 @@ export default function Landing() {
           </Stack>
         </Stack>
       </Flex>
-      <Flex flex={1}>
-        <Image
-          alt={'Login Image'}
-          objectFit={'cover'}
-          display={{ base: 'none', sm: 'block' }}
-          src={
-            'http://prod-upp-image-read.ft.com/2262e2e4-49a1-11ea-aee2-9ddbdc86190d'
-          }
-        />
-      </Flex>
-    </Stack>
+    </Box>
   );
 }

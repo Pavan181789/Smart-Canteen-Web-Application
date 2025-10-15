@@ -13,11 +13,9 @@ import {
   IconButton,
   Box,
 } from '@chakra-ui/react';
-import { IoBagCheckOutline } from 'react-icons/io5';
 import { AiOutlineLeft } from 'react-icons/ai';
-import { IoMdAdd } from 'react-icons/io';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import uuid from 'react-uuid';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/AuthContext';
@@ -39,14 +37,6 @@ export default function CheckoutList({ toggleToCheckout }) {
     });
   }, []);
 
-  const addMoney = async diff => {
-    const userDocRef = doc(db, 'users', user.uid);
-    await updateDoc(userDocRef, {
-      wallet: wallet + diff + 500,
-    });
-    setWallet(wallet + diff + 500);
-  };
-
   const pay = () => {
     const orderId = uuid();
     setDoc(doc(db, 'orders', orderId), {
@@ -61,10 +51,6 @@ export default function CheckoutList({ toggleToCheckout }) {
       orderTime: Date(),
     })
       .then(() => {
-        setWallet(wallet - totalAmt);
-        updateDoc(doc(db, 'users', user.uid), {
-          wallet: wallet - totalAmt,
-        });
         setTotalAmt(0);
       })
       .then(() => {
@@ -89,58 +75,14 @@ export default function CheckoutList({ toggleToCheckout }) {
         </Text>
       </Center>
       <MenuDivider />
+      {/* QuickPay eligibility and wallet balance (info only) */}
       <Text pl="3" pb="2" pt="3" fontSize="xl" fontWeight="medium">
         {wallet >= totalAmt ? 'Eligible for QuickPay' : `You can't QuickPay`}
       </Text>
-      <Text pl="3" pb="3" fontSize="md" color="green.300" fontWeight="medium">
-        {wallet >= totalAmt && wallet > 0 ? (
-          `Wallet Balance: ₹${wallet}`
-        ) : (
-          <>
-            <Text as="span" color="red.500">
-              Wallet Balance: ₹{wallet}
-            </Text>
-          </>
-        )}
+      <Text pl="3" pb="3" fontSize="md" color={wallet >= totalAmt && wallet > 0 ? 'green.300' : 'red.500'} fontWeight="medium">
+        Wallet Balance: ₹{wallet ?? 0}
       </Text>
-      <Center>
-        {wallet < totalAmt ? (
-          <Button
-            m="3"
-            w="40"
-            bg="blue.500"
-            _hover={{
-              background: 'blue.400',
-            }}
-            rightIcon={<IoMdAdd />}
-            disabled={totalAmt === 0 ? true : false}
-            onClick={() => addMoney(totalAmt - wallet)}
-          >
-            Add Money
-          </Button>
-        ) : (
-          <Button
-            m="3"
-            w="40"
-            bg="blue.500"
-            _hover={{
-              background: 'blue.400',
-            }}
-            rightIcon={<IoBagCheckOutline />}
-            disabled={totalAmt === 0 ? true : false}
-            isLoading={loading.state}
-            loadingText={loading.loadingText}
-            onClick={() => {
-              setLoading({ state: true, loadingText: 'Processing...' });
-              pay(wallet - totalAmt);
-            }}
-          >
-            Pay ₹{totalAmt}
-          </Button>
-        )}
-      </Center>
-
-      {/* 👉 New Payment Navigation Section */}
+      {/* Payment Navigation */}
       <Box p={4}>
         <Button
           colorScheme="teal"

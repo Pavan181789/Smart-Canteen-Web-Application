@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Button, Input, Text, VStack, HStack, IconButton, useDisclosure, Drawer, DrawerOverlay, DrawerContent, DrawerHeader, DrawerBody, DrawerCloseButton } from '@chakra-ui/react';
-import { FiMessageSquare, FiSend, FiX } from 'react-icons/fi';
+import { Box, Button, Input, Text, VStack, HStack, IconButton, useDisclosure, Drawer, DrawerOverlay, DrawerContent, DrawerHeader, DrawerBody, DrawerCloseButton, Avatar } from '@chakra-ui/react';
+import { FiMessageSquare, FiSend } from 'react-icons/fi';
 import aiService from '../services/aiService';
+import { UserAuth } from '../context/AuthContext';
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -11,12 +12,18 @@ const Chatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const messagesEndRef = useRef(null);
+  const { user } = UserAuth?.() || {};
 
   const quickQuestions = [
     "What's the special today?",
     "Suggest a veg combo under ₹100",
     "When does the canteen open?",
-    "I have a complaint about my order"
+    "I have a complaint about my order",
+    "What's the menu for today?",
+    "When does the canteen Close?"
+    
+
+    
   ];
 
   const scrollToBottom = () => {
@@ -58,18 +65,20 @@ const Chatbot = () => {
 
   return (
     <>
-      <IconButton
-        position="fixed"
-        bottom={8}
-        right={8}
-        size="lg"
-        colorScheme="blue"
-        borderRadius="full"
-        icon={isOpen ? <FiX /> : <FiMessageSquare />}
-        onClick={isOpen ? onClose : onOpen}
-        zIndex={9999}
-        boxShadow="lg"
-      />
+      {!isOpen && (
+        <IconButton
+          position="fixed"
+          bottom={8}
+          right={8}
+          size="lg"
+          colorScheme="blue"
+          borderRadius="full"
+          icon={<FiMessageSquare />}
+          onClick={onOpen}
+          zIndex={9999}
+          boxShadow="lg"
+        />
+      )}
 
       <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="lg">
         <DrawerOverlay />
@@ -79,34 +88,50 @@ const Chatbot = () => {
             Canteen Assistant
           </DrawerHeader>
           <DrawerBody p={0} display="flex" flexDirection="column">
-            <Box flex="1" overflowY="auto" p={4}>
+            <Box flex={1} overflowY="auto" p={4}>
               <VStack spacing={4} align="stretch">
-                {messages.map((message, index) => (
-                  <Box
-                    key={index}
-                    alignSelf={message.sender === 'user' ? 'flex-end' : 'flex-start'}
-                    bg={message.sender === 'user' ? 'blue.500' : 'gray.700'}
-                    color={message.sender === 'user' ? 'white' : 'gray.100'}
-                    px={4}
-                    py={3}
-                    borderRadius="lg"
-                    maxW="80%"
-                    boxShadow={message.sender === 'user' ? 'md' : 'sm'}
-                  >
-                    <Text>{message.text}</Text>
-                  </Box>
-                ))}
+                {messages.map((message, index) => {
+                  const isUser = message.sender === 'user';
+                  return (
+                    <HStack key={index} justify={isUser ? 'flex-end' : 'flex-start'} align="flex-end">
+                      {!isUser && (
+                        <Avatar size="sm" name="Canteen" bg="blue.600" color="white" />
+                      )}
+                      <Box
+                        bg={isUser ? 'blue.500' : 'gray.700'}
+                        color={isUser ? 'white' : 'gray.100'}
+                        px={4}
+                        py={3}
+                        borderRadius="lg"
+                        maxW="75%"
+                        boxShadow={isUser ? 'md' : 'sm'}
+                      >
+                        <Text whiteSpace="pre-wrap">{message.text}</Text>
+                      </Box>
+                      {isUser && (
+                        <Avatar
+                          size="sm"
+                          name={user?.displayName || 'You'}
+                          src={user?.photoURL || undefined}
+                        />
+                      )}
+                    </HStack>
+                  );
+                })}
                 {isLoading && (
-                  <Box alignSelf="flex-start" bg="gray.700" px={4} py={3} borderRadius="lg">
-                    <Text color="gray.200">Typing...</Text>
-                  </Box>
+                  <HStack justify="flex-start" align="flex-end">
+                    <Avatar size="sm" name="Canteen" bg="blue.600" color="white" />
+                    <Box bg="gray.700" px={4} py={3} borderRadius="lg">
+                      <Text color="gray.200">Typing...</Text>
+                    </Box>
+                  </HStack>
                 )}
                 <div ref={messagesEndRef} />
               </VStack>
             </Box>
 
             <Box p={4} borderTopWidth="1px" borderColor="gray.700" bg="gray.850">
-              <VStack spacing={3}>
+              <VStack spacing={3} align="stretch">
                 <HStack spacing={2} flexWrap="wrap">
                   {quickQuestions.map((question, index) => (
                     <Button
@@ -122,6 +147,11 @@ const Chatbot = () => {
                   ))}
                 </HStack>
                 <HStack spacing={3}>
+                  <Avatar
+                    size="sm"
+                    name={user?.displayName || 'You'}
+                    src={user?.photoURL || undefined}
+                  />
                   <Input
                     placeholder="Type your message..."
                     value={input}

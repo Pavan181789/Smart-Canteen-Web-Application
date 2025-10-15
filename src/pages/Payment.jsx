@@ -16,15 +16,20 @@ import QRCode from 'react-qr-code'; // Import the QR code library
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { useRecoilValue } from 'recoil';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { useState } from 'react';
-import { cart as cartAtom, totalAmt as totalAmtAtom } from '../atoms'; // your cart atoms
+import { cart as cartAtom, totalAmt as totalAmtAtom, menu as menuAtom } from '../atoms'; // cart atoms
+import { UserAuth } from '../context/AuthContext';
 
 export default function Payment() {
   const cartItems = useRecoilValue(cartAtom);
   const totalAmount = useRecoilValue(totalAmtAtom);
+  const setCart = useSetRecoilState(cartAtom);
+  const setTotalAmt = useSetRecoilState(totalAmtAtom);
+  const setMenu = useSetRecoilState(menuAtom);
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = UserAuth();
 
   const [billingDetails, setBillingDetails] = useState({
     name: '',
@@ -51,7 +56,7 @@ export default function Payment() {
     });
   };
 
-    const generateUPIQRCode = () => {
+  const generateUPIQRCode = () => {
     const upiPaymentString = `upi://pay?pa= Amrita-upi-id@bank&pn= AMRITA SELF HELP GROUP&am=${totalAmount}&cu=INR`;
     setUpiDetails({
       upiString: upiPaymentString,
@@ -118,7 +123,16 @@ export default function Payment() {
       }
     }
 
+    // Normalize order schema to what Orders.jsx expects
+    const safeEmail = user?.email || 'USER';
+    const orderNum = `${String(safeEmail).split('.')[1]?.slice(0,3)?.toUpperCase() || 'ORD'}${Math.floor(Math.random()*101)}`;
     const orderData = {
+      uid: user?.uid || 'anonymous',
+      amount: totalAmount,
+      orders: cartItems,
+      orderNum,
+      orderTime: new Date().toString(),
+      // Additional details kept for record
       items: cartItems,
       total: totalAmount,
       billingDetails,
@@ -138,7 +152,12 @@ export default function Payment() {
         isClosable: true,
       });
 
-      navigate('/order-confirmation'); // Redirect to order confirmation page
+      // Clear cart and totals
+      setCart([]);
+      setTotalAmt(0);
+      setMenu(prev => Array.isArray(prev) ? prev.map(i => ({ ...i, count: 0 })) : []);
+
+      navigate('/order-confirmation', { replace: true }); // Redirect to order confirmation page and drop history
     } catch (error) {
       console.error('Error placing order:', error);
       toast({
@@ -293,11 +312,13 @@ export default function Payment() {
         <>
           <Heading fontSize="lg" mb={4}>Your Order</Heading>
           <Box mb={4}>
-            {cartItems.map((item, index) => (
-              <Text key={index}>
-                {item.itemName} x{item.count} — ₹{item.cost * item.count}
-              </Text>
-            ))}
+            {cartItems
+              .filter((item) => (item?.count || 0) > 0)
+              .map((item, index) => (
+                <Text key={index}>
+                  {item.itemName} x ({item.count}) = ₹{item.cost * item.count}
+                </Text>
+              ))}
             <Divider my={2} />
             <Text>Subtotal: ₹{totalAmount}</Text>
             <Text fontWeight="bold">Total: ₹{totalAmount}</Text>

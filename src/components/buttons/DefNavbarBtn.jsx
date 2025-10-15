@@ -32,26 +32,12 @@ export default function NavbarBtn() {
         cursor={'pointer'}
         minW={0}
       >
-        <Avatar
-          size={'sm'}
-          src={
-            user.photoURL
-              ? user.photoURL
-              : 'https://avatars.dicebear.com/api/male/username.svg'
-          }
-        />
+        <Avatar size={'sm'} name={user?.displayName || user?.email || 'User'} src={user?.photoURL || undefined} />
       </MenuButton>
       <MenuList alignItems={'center'}>
         <br />
         <Center>
-          <Avatar
-            size={'2xl'}
-            src={
-              user.photoURL
-                ? user.photoURL
-                : 'https://avatars.dicebear.com/api/male/username.svg'
-            }
-          />
+          <Avatar size={'2xl'} name={user?.displayName || user?.email || 'User'} src={user?.photoURL || undefined} />
         </Center>
         <br />
         <Center>

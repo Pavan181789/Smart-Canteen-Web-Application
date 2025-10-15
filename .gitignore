@@ -30,3 +30,6 @@ backend/functions/*.json
 *.service-account.json
 
 .env
+ 
+# IDE
+.idea/

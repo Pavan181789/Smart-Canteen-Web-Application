@@ -28,25 +28,66 @@ export const aiService = {
     }
   },
 
+  // Try to find the best matching menu item in a question
+  findBestMenuMatch: function(question, items) {
+    const q = String(question || '').toLowerCase();
+    // Tokenize and remove very short tokens
+    const tokens = q.split(/[^a-z0-9]+/i).filter(t => t.length >= 3);
+    let best = null;
+    let bestScore = 0;
+    items.forEach(it => {
+      const name = String(it.itemName || '').toLowerCase();
+      let score = 0;
+      tokens.forEach(t => { if (name.includes(t)) score += 1; });
+      // small bonus if all tokens appear in some order
+      if (tokens.length && tokens.every(t => name.includes(t))) score += 0.5;
+      if (score > bestScore) { bestScore = score; best = it; }
+    });
+    return bestScore >= 1 ? best : null; // require at least one token match
+  },
+
+  // Fetch structured nutrition and info for a specific food item
+  getFoodInfo: async function(itemName) {
+    try {
+      const model = getModel();
+      const prompt = `You are a nutrition assistant for a campus canteen. 
+Provide detailed information about the food item "${itemName}" commonly served in Indian canteens.
+Respond ONLY as compact JSON with the following exact schema (no markdown, no commentary):\n
+{\n  "name": string,\n  "description": string,\n  "ingredients": string[],\n  "typical_serving_g": number,\n  "macros_per_100g": {\n    "calories_kcal": number,\n    "protein_g": number,\n    "carbs_g": number,\n    "fat_g": number,\n    "fiber_g": number,\n    "sugar_g": number\n  },\n  "benefits": string[],\n  "cautions": string[]\n}\n
+Rules:\n- If there is variability, provide reasonable typical values.\n- Keep arrays to 3-7 concise items.\n- Do not include units inside numbers; keep keys self-descriptive.\n- If unknown, estimate based on the most common recipe.`;
+
+      const result = await model.generateContent(prompt);
+      let text = result.response.text() || '';
+      // Strip code fences if any
+      text = text.trim().replace(/^```(json)?/i, '').replace(/```$/i, '').trim();
+      try {
+        const data = JSON.parse(text);
+        return { ok: true, data };
+      } catch (e) {
+        // Fallback to a friendly paragraph if JSON parsing fails
+        const fallback = await this.generateResponse(`Give a concise nutrition overview of ${itemName} including ingredients, macros per 100g, benefits and cautions.`);
+        return { ok: false, text: fallback };
+      }
+    } catch (error) {
+      console.error('Error getting food info:', error);
+      throw error;
+    }
+  },
+
   // ----------------- Helpers: parsing and menu answers -----------------
   parseQuery: function(text) {
     const s = String(text || '').toLowerCase();
-    const sectionMap = {
-      tiffin: 'Tiffin',
-      breakfast: 'Tiffin',
-      lunch: 'Lunch',
-      snacks: 'Snacks',
-      dinner: 'Dinner',
-      juice: 'Juices',
-      juices: 'Juices',
-      'ice cream': 'Ice Cream',
-      ice: 'Ice Cream',
-      cream: 'Ice Cream',
-    };
+    // Use regex word-boundary matching to avoid matching 'ice' in 'rice'
+    const sectionPatterns = [
+      { re: /\b(tiffin|breakfast)\b/i, val: 'Tiffin' },
+      { re: /\blunch\b/i, val: 'Lunch' },
+      { re: /\bsnacks?\b/i, val: 'Snacks' },
+      { re: /\bdinner\b/i, val: 'Dinner' },
+      { re: /\bjuices?\b/i, val: 'Juices' },
+      { re: /\bice\s*cream\b/i, val: 'Ice Cream' },
+    ];
     let section = null;
-    for (const key of Object.keys(sectionMap)) {
-      if (s.includes(key)) { section = sectionMap[key]; break; }
-    }
+    for (const p of sectionPatterns) { if (p.re.test(s)) { section = p.val; break; } }
 
     // Prices: under/below/less than/<=, above/>=/greater than, between A and B
     let maxPrice = null, minPrice = null;
@@ -112,10 +153,9 @@ export const aiService = {
     if (intent.vegMode === 'veg') filtered = filtered.filter(i => i.veg === 'veg');
     if (intent.vegMode === 'nonveg') {
       let nonVegFiltered = filtered.filter(i => i.veg === 'nonveg');
-      // If nothing matched due to missing hints, try a looser name-based match
       if (nonVegFiltered.length === 0) {
         const re = /(chicken|egg|mutton|beef|fish|prawn|prawns|shrimp|meat|keema|tandoori|grill|kebab|boti)/i;
-        nonVegFiltered = filtered.filter(i => re.test(String(i.itemName||'')));
+        nonVegFiltered = filtered.filter(i => re.test(String(i.itemName || '')));
       }
       filtered = nonVegFiltered;
     }
@@ -130,14 +170,33 @@ export const aiService = {
       return 'I could not find matching items. Try changing the section, price range, or veg mode.';
     }
 
-    const top = filtered.slice(0, 12);
-    const bullets = top.map(i => `• ${i.itemName} — ₹${i.cost}${i.veg === 'veg' ? ' (veg)' : ' (non-veg)'} [${i.category}]`).join('\n');
+    // Group by sections in fixed order
+    const ORDER = ['Tiffin', 'Lunch', 'Snacks', 'Dinner', 'Ice Cream', 'Juices'];
+    const grouped = ORDER.map(section => ({
+      section,
+      items: filtered.filter(i => i.category === section)
+    }));
+
     let header = 'Here are items from the menu';
     if (intent.section) header += ` in ${intent.section}`;
     if (intent.maxPrice != null) header += ` under ₹${intent.maxPrice}`;
     if (intent.minPrice != null) header += ` above ₹${intent.minPrice}`;
     if (intent.vegMode) header += ` (${intent.vegMode})`;
-    return `${header}:\n${bullets}`;
+
+    const lines = [header + ':'];
+    grouped.forEach(group => {
+      lines.push(`\nItems in ${group.section}`);
+      if (group.items.length === 0) {
+        lines.push('- None found');
+      } else {
+        group.items.forEach(i => {
+          const vegTag = i.veg === 'veg' ? 'veg' : 'non-veg';
+          lines.push(`- ${i.itemName} — ₹${i.cost} (${vegTag})`);
+        });
+      }
+    });
+
+    return lines.join('\n');
   },
 
   getPersonalizedRanking: async function(uid) {
@@ -178,6 +237,26 @@ export const aiService = {
   // Handle general inquiries
   handleInquiry: async function(question) {
     try {
+      const qLower = String(question || '').toLowerCase();
+      // Hard-coded canteen hours intents
+      if (/\bwhen\s+does\s+the\s+canteen\s+close\b|\bclosing\s*time\b|\bwhat\s*time\s+do\s+you\s+close\b/i.test(qLower)) {
+        return 'The canteen closes at 9:00 PM (21:00).';
+      }
+      if (/\bwhen\s+does\s+the\s+canteen\s+open\b|\bopening\s*time\b|\bwhat\s*time\s+do\s+you\s+open\b/i.test(qLower)) {
+        return 'The canteen opens at 8:00 AM.';
+      }
+
+      // Item price lookup like: "paneer fried rice cost/price"
+      if (/\b(cost|price|rate)\b/i.test(qLower)) {
+        const items = await this.loadMenu();
+        const match = this.findBestMenuMatch(qLower, items);
+        if (match) {
+          const vegTag = match.veg === 'veg' ? 'veg' : 'non-veg';
+          return `${match.itemName} costs ₹${match.cost} (${vegTag}) [${match.category}].`;
+        }
+        // fallthrough to normal handling if no match
+      }
+
       // First, try to parse structured filters from the question
       const intent = this.parseQuery(question);
       if (intent.hasFilter) {

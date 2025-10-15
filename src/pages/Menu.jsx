@@ -1,7 +1,7 @@
 import React, { useState, useLayoutEffect, useEffect } from 'react';
 import Nav from '../components/Navbar';
 import ProfileNavBtn from '../components/buttons/ProfileNavBtn';
-import { Box, Text, SimpleGrid, VStack, HStack, Button } from '@chakra-ui/react';
+import { Box, Text, SimpleGrid, VStack, HStack, Button, useDisclosure } from '@chakra-ui/react';
 import { db } from '../firebase';
 import { getDocs, collection, getDoc, doc } from 'firebase/firestore';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../atoms';
 import { useRecoilState } from 'recoil';
 import MenuCard from '../components/MenuCard';
+import FoodInfoModal from '../components/FoodInfoModal';
 import { UserAuth } from '../context/AuthContext';
 
 // Define the menu sections and their timings
@@ -22,7 +23,6 @@ const MENU_SECTIONS = {
   Dinner: '19:00 PM - 21:00 PM',
   'Ice Cream': 'All Day',
   Juices: 'All Day',
-
 };
 
 export default function Profile() {
@@ -32,6 +32,9 @@ export default function Profile() {
   const [, setWallet] = useRecoilState(walletAtom); // Removed unused wallet
   const [, setCart] = useRecoilState(cartAtom); // Removed unused cart
   const { user } = UserAuth();
+  // Food info modal state
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [infoItem, setInfoItem] = useState(null); // { itemName, thumbnail }
 
   // State to manage the selected category
   const [selectedCategory, setSelectedCategory] = useState(Object.keys(MENU_SECTIONS)[0]);
@@ -52,32 +55,13 @@ export default function Profile() {
     document.title = 'Your Menu';
   }, []);
 
-  // Listen for chatbot events to sync UI (section and veg mode)
-  useEffect(() => {
-    function onSection(e) {
-      const section = e?.detail;
-      if (section && MENU_SECTIONS[section]) setSelectedCategory(section);
-    }
-    function onVeg(e) {
-      const mode = e?.detail;
-      if (mode === 'veg' || mode === 'nonveg' || mode === 'all') setVegMode(mode);
-      // default to 'veg'/'nonveg' if provided, otherwise ignore
-    }
-    window.addEventListener('setMenuSection', onSection);
-    window.addEventListener('setVegMode', onVeg);
-    return () => {
-      window.removeEventListener('setMenuSection', onSection);
-      window.removeEventListener('setVegMode', onVeg);
-    };
-  }, []);
-
   // Fetch menu items from Firestore and set the menu state
   useEffect(() => {
     getDocs(collection(db, 'menu'))
       .then((data) => {
-        const getMenu = [];
+        const menu = [];
         data.forEach((doc) =>
-          getMenu.push({
+          menu.push({
             id: doc.id,
             itemName: doc.get('itemName'),
             cost: doc.get('cost'),
@@ -86,7 +70,7 @@ export default function Profile() {
             count: 0,
           })
         );
-        setMenu(getMenu);
+        setMenu(menu);
       })
       .catch((err) => console.error('Error fetching menu:', err));
   }, [setMenu]); // Added setMenu as dependency
@@ -103,7 +87,6 @@ export default function Profile() {
         console.error('Failed to fetch wallet:', err);
       }
     }
-
     fetchWallet();
   }, [user?.uid, setWallet]); // depend on uid
 
@@ -111,13 +94,22 @@ export default function Profile() {
   function incrementCart(id) {
     const newMenu = menu.map((obj) => {
       if (obj.id === id) {
-        if (obj.count === 0) setCart((cart) => [...cart, obj]);
+        const nextCount = obj.count + 1;
         setTotalAmt((amt) => amt + obj.cost);
-        return { ...obj, count: obj.count + 1 };
+        // Update cart: add or update count
+        setCart((cart) => {
+          const idx = cart.findIndex((c) => c.id === obj.id);
+          if (idx === -1) {
+            return [...cart, { ...obj, count: nextCount }];
+          }
+          const updated = [...cart];
+          updated[idx] = { ...updated[idx], count: nextCount };
+          return updated;
+        });
+        return { ...obj, count: nextCount };
       }
       return obj;
     });
-
     setMenu(newMenu);
   }
 
@@ -125,13 +117,29 @@ export default function Profile() {
   function decrementCart(id) {
     const newMenu = menu.map((obj) => {
       if (obj.id === id && obj.count > 0) {
-        setCart((cart) => cart.filter((item) => item.id !== obj.id));
+        const nextCount = obj.count - 1;
         setTotalAmt((amt) => amt - obj.cost);
-        return { ...obj, count: obj.count - 1 };
+        setCart((cart) => {
+          const idx = cart.findIndex((c) => c.id === obj.id);
+          if (idx === -1) return cart;
+          if (nextCount === 0) {
+            return cart.filter((c) => c.id !== obj.id);
+          }
+          const updated = [...cart];
+          updated[idx] = { ...updated[idx], count: nextCount };
+          return updated;
+        });
+        return { ...obj, count: nextCount };
       }
       return obj;
     });
     setMenu(newMenu);
+  }
+
+  // Open food info modal
+  function openInfo(item) {
+    setInfoItem({ name: item.itemName, thumbnail: item.thumbnail });
+    onOpen();
   }
 
   return (
@@ -194,10 +202,17 @@ export default function Profile() {
                 forCart
                 incrementCart={incrementCart}
                 decrementCart={decrementCart}
+                onInfoClick={openInfo}
               />
             ))}
         </SimpleGrid>
       </VStack>
+      <FoodInfoModal
+        isOpen={isOpen}
+        onClose={onClose}
+        itemName={infoItem?.name}
+        thumbnail={infoItem?.thumbnail}
+      />
     </>
   );
 }

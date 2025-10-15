@@ -21,11 +21,13 @@ import { UserAuth } from '../context/AuthContext';
 import CartMenu from './CartMenu';
 import { analytics } from '../firebase';
 import { logEvent } from 'firebase/analytics';
+import { useNavigate } from 'react-router-dom';
 
 export default function Nav({ title, navBtn, hasCheckout }) {
   const { colorMode, toggleColorMode } = useColorMode();
   const { googleSignIn, user } = UserAuth();
   const { isOpen, onClose, onOpen } = useDisclosure();
+  const navigate = useNavigate();
 
   const handleSignIn = async () => {
     try {
@@ -66,7 +68,29 @@ export default function Nav({ title, navBtn, hasCheckout }) {
               <Button onClick={toggleColorMode} variant="ghost">
                 {colorMode === 'light' ? <FaMoon /> : <FaSun />}
               </Button>
-              {hasCheckout ? <CartMenu /> : null}
+              {user ? (
+                <>
+                  {/* Global Menu button */}
+                  <Button
+                    variant="solid"
+                    size="sm"
+                    colorScheme="teal"
+                    onClick={() => navigate('/menu')}
+                  >
+                    Menu
+                  </Button>
+                  {/* My Orders button (match Menu style) */}
+                  <Button
+                    variant="solid"
+                    size="sm"
+                    colorScheme="teal"
+                    onClick={() => navigate('/orders')}
+                  >
+                    My Orders
+                  </Button>
+                  {hasCheckout ? <CartMenu /> : null}
+                </>
+              ) : null}
 
               {user == null ? (
                 <Button
