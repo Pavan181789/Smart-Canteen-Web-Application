@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Button, Input, Text, VStack, HStack, IconButton, useDisclosure, Drawer, DrawerOverlay, DrawerContent, DrawerHeader, DrawerBody, DrawerCloseButton, Avatar } from '@chakra-ui/react';
-import { FiMessageSquare, FiSend } from 'react-icons/fi';
+import { Box, Button, Input, Text, VStack, HStack, IconButton, useDisclosure, Drawer, DrawerOverlay, DrawerContent, DrawerHeader, DrawerBody, DrawerCloseButton, Avatar, Select, Switch, FormControl, FormLabel } from '@chakra-ui/react';
+import { FiMessageSquare, FiSend, FiMic, FiMicOff } from 'react-icons/fi';
 import aiService from '../services/aiService';
 import { UserAuth } from '../context/AuthContext';
 
@@ -13,6 +13,12 @@ const Chatbot = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const messagesEndRef = useRef(null);
   const { user } = UserAuth?.() || {};
+  const [isListening, setIsListening] = useState(false);
+  const [hasSpeechSupport, setHasSpeechSupport] = useState(false);
+  const recognitionRef = useRef(null);
+  const [recognitionLang, setRecognitionLang] = useState('en-IN');
+  const [interimEnabled, setInterimEnabled] = useState(true);
+  const [autoStop, setAutoStop] = useState(true);
 
   const quickQuestions = [
     "What's the special today?",
@@ -26,6 +32,25 @@ const Chatbot = () => {
     
   ];
 
+  const renderBold = (text) => {
+    if (typeof text !== 'string') return text;
+    const parts = [];
+    let lastIndex = 0;
+    const regex = /\*\*(.+?)\*\*/g; // match **bold**
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      parts.push(<strong key={parts.length}>{match[1]}</strong>);
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    return parts.length ? parts : text;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -33,6 +58,66 @@ const Chatbot = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const SpeechRecognition = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SpeechRecognition) {
+      setHasSpeechSupport(false);
+      return;
+    }
+    setHasSpeechSupport(true);
+    const recognition = new SpeechRecognition();
+    recognition.lang = recognitionLang;
+    recognition.interimResults = interimEnabled;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) {
+          finalTranscript += res[0].transcript;
+        } else {
+          interimTranscript += res[0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        setInput(finalTranscript.trim());
+      } else if (interimTranscript) {
+        // show interim lightly; do not commit to final content
+        setInput(interimTranscript.trim());
+      }
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    if (autoStop) {
+      recognition.onspeechend = () => {
+        try { recognition.stop(); } catch (_) {}
+      };
+    }
+    recognitionRef.current = recognition;
+  }, [recognitionLang, interimEnabled, autoStop]);
+
+  const startListening = () => {
+    if (!recognitionRef.current || isLoading) return;
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (_) {}
+  };
+
+  const stopListening = () => {
+    if (!recognitionRef.current) return;
+    try {
+      recognitionRef.current.stop();
+    } catch (_) {}
+  };
 
   const handleSendMessage = async (textOverride) => {
     const raw = textOverride ?? input;
@@ -106,7 +191,7 @@ const Chatbot = () => {
                         maxW="75%"
                         boxShadow={isUser ? 'md' : 'sm'}
                       >
-                        <Text whiteSpace="pre-wrap">{message.text}</Text>
+                        <Text whiteSpace="pre-wrap">{renderBold(message.text)}</Text>
                       </Box>
                       {isUser && (
                         <Avatar
@@ -132,6 +217,27 @@ const Chatbot = () => {
 
             <Box p={4} borderTopWidth="1px" borderColor="gray.700" bg="gray.850">
               <VStack spacing={3} align="stretch">
+                <HStack spacing={4} align="center">
+                  <FormControl display="flex" alignItems="center" maxW="220px">
+                    <FormLabel m={0} fontSize="sm" color="gray.300">Language</FormLabel>
+                    <Select size="sm" value={recognitionLang} onChange={(e) => setRecognitionLang(e.target.value)} bg="gray.800" borderColor="gray.700" color="gray.100">
+                      <option value="en-IN">English (India)</option>
+                      <option value="hi-IN">Hindi (India)</option>
+                      <option value="te-IN">Telugu (India)</option>
+                      <option value="ta-IN">Tamil (India)</option>
+                      <option value="kn-IN">Kannada (India)</option>
+                      <option value="ml-IN">Malayalam (India)</option>
+                    </Select>
+                  </FormControl>
+                  <FormControl display="flex" alignItems="center" w="auto">
+                    <FormLabel m={0} fontSize="sm" color="gray.300" htmlFor="interimSwitch">Interim</FormLabel>
+                    <Switch id="interimSwitch" isChecked={interimEnabled} onChange={(e) => setInterimEnabled(e.target.checked)} colorScheme="blue" ml={2} />
+                  </FormControl>
+                  <FormControl display="flex" alignItems="center" w="auto">
+                    <FormLabel m={0} fontSize="sm" color="gray.300" htmlFor="autoStopSwitch">Auto‑stop</FormLabel>
+                    <Switch id="autoStopSwitch" isChecked={autoStop} onChange={(e) => setAutoStop(e.target.checked)} colorScheme="blue" ml={2} />
+                  </FormControl>
+                </HStack>
                 <HStack spacing={2} flexWrap="wrap">
                   {quickQuestions.map((question, index) => (
                     <Button
@@ -153,7 +259,7 @@ const Chatbot = () => {
                     src={user?.photoURL || undefined}
                   />
                   <Input
-                    placeholder="Type your message..."
+                    placeholder={isListening ? "Listening..." : "Type your message..."}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -163,6 +269,16 @@ const Chatbot = () => {
                     _placeholder={{ color: 'gray.400' }}
                     color="gray.100"
                     borderRadius="full"
+                  />
+                  <IconButton
+                    colorScheme={isListening ? 'red' : 'gray'}
+                    aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                    icon={isListening ? <FiMicOff /> : <FiMic />}
+                    onClick={() => (isListening ? stopListening() : startListening())}
+                    isDisabled={isLoading || !hasSpeechSupport}
+                    borderRadius="full"
+                    boxShadow="md"
+                    title={hasSpeechSupport ? (isListening ? 'Stop voice input' : 'Speak') : 'Voice not supported in this browser'}
                   />
                   <IconButton
                     colorScheme="blue"

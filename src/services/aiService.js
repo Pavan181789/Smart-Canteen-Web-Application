@@ -18,6 +18,7 @@ export const aiService = {
   conversationContext: [],
   // Cache menu in-memory to avoid repeated reads
   menuCache: null,
+  menuCacheFetchedAt: 0,
   
   // Add a message to the conversation context
   addToContext: function(role, content) {
@@ -30,20 +31,64 @@ export const aiService = {
 
   // Try to find the best matching menu item in a question
   findBestMenuMatch: function(question, items) {
-    const q = String(question || '').toLowerCase();
-    // Tokenize and remove very short tokens
-    const tokens = q.split(/[^a-z0-9]+/i).filter(t => t.length >= 3);
+    const q = this.normalizeQuestion(String(question || ''));
+    // Common stopwords/noise that shouldn't influence matching
+    const STOPWORDS = new Set([
+      'what','whats','is','the','a','an','please','pls','plz','cost','price','rate',
+      'how','much','of','one','two','three','four','5','6','7','8','9','0','for',
+      'i','need','want','like','tell','me','about','today','this','that','plate','plates'
+    ]);
+    // Tokenize and remove short tokens and stopwords
+    const tokens = q
+      .split(/[^a-z0-9]+/i)
+      .map(t => t.trim())
+      .filter(t => t.length >= 2 && !STOPWORDS.has(t));
+    if (tokens.length === 0) return null;
+
+    // Lightweight edit distance for fuzzy matching
+    const editDistance = (a, b) => {
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+            dp[i - 1][j - 1] + cost
+          );
+        }
+      }
+      return dp[m][n];
+    };
+
     let best = null;
     let bestScore = 0;
     items.forEach(it => {
-      const name = String(it.itemName || '').toLowerCase();
+      const nameRaw = String(it.itemName || '').toLowerCase();
+      const name = this.normalizeQuestion(nameRaw); // normalize item names too
       let score = 0;
-      tokens.forEach(t => { if (name.includes(t)) score += 1; });
-      // small bonus if all tokens appear in some order
-      if (tokens.length && tokens.every(t => name.includes(t))) score += 0.5;
+      tokens.forEach(t => {
+        if (!t) return;
+        if (name.includes(t)) {
+          score += 1.2; // exact/substring match
+        } else {
+          const d = editDistance(t, name);
+          // allow small distance relative to token size (handles idly vs idli)
+          const threshold = t.length <= 5 ? 1 : 2;
+          if (d <= threshold) score += 1.0 - (d * 0.3);
+          // token starts-with bonus (e.g., idli vs idlis)
+          if (name.startsWith(t)) score += 0.3;
+        }
+      });
+      // small bonus if all tokens appear (loosely)
+      const allAppear = tokens.every(t => name.includes(t) || editDistance(t, name) <= (t.length <= 5 ? 1 : 2));
+      if (tokens.length && allAppear) score += 0.4;
       if (score > bestScore) { bestScore = score; best = it; }
     });
-    return bestScore >= 1 ? best : null; // require at least one token match
+    return bestScore > 0.9 ? best : null; // require reasonable confidence
   },
 
   // Fetch structured nutrition and info for a specific food item
@@ -75,6 +120,50 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
   },
 
   // ----------------- Helpers: parsing and menu answers -----------------
+  normalizeQuestion: function(text) {
+    let s = String(text || '');
+    // Lowercase for normalization, keep original for output later if needed
+    s = s.toLowerCase();
+    // Common Indian-English STT misrecognitions and synonyms
+    const replacements = [
+      [/\bidly\b/g, 'idli'],
+      [/\bidly\b/g, 'idli'],
+      [/\bidly\b/g, 'idli'],
+      [/\bidlys\b/g, 'idlis'],
+      [/\bidly\b/g, 'idli'],
+      [/\bidlii\b/g, 'idli'],
+      [/\biddlee\b/g, 'idli'],
+      [/\bidlye?\b/g, 'idli'],
+      [/\bitchli\b/g, 'idli'],
+      [/\bpledge\b/g, 'plate'],
+      [/\bplain\s*idli\b/g, 'idli'],
+      [/\bplane\s*idli\b/g, 'idli'],
+      [/\bboneless\b/g, 'boneless'],
+      [/\bfried\s*r(i|1)ce\b/g, 'fried rice'],
+      [/\br(i|1)ce\b/g, 'rice'],
+      [/\bchapathi\b/g, 'chapati'],
+      [/\bchappathi\b/g, 'chapati'],
+      [/\bparota\b/g, 'paratha'],
+    ];
+    replacements.forEach(([re, val]) => { s = s.replace(re, val); });
+    // Remove superfluous word 'plate' so that item core word matches better
+    s = s.replace(/\bplates?\b/g, '');
+    // Collapse whitespace
+    s = s.replace(/\s+/g, ' ').trim();
+    return s;
+  },
+  // Provide a small synonyms map; keys are canonical item names from your menu
+  getSynonymsMap: function() {
+    return {
+      'idli': ['idly','idlies','idli sambar','plain idli','idli plate','idli (2 pcs)','idli with sambar','idle','italy'],
+      'dosa': ['dosaa','plain dosa','masala dosa','dose','doza'],
+      'vada': ['vade','wada','medu vada','garelu'],
+      'poori': ['puri','poori bhaji','puri bhaji'],
+      'chapati': ['chapathi','chappathi','roti'],
+      'fried rice': ['friedrice','veg fried rice','veg friedrice'],
+      'biryani': ['biriyani','biryani rice'],
+    };
+  },
   parseQuery: function(text) {
     const s = String(text || '').toLowerCase();
     // Use regex word-boundary matching to avoid matching 'ice' in 'rice'
@@ -128,8 +217,11 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
     return 'veg';
   },
 
-  loadMenu: async function() {
-    if (this.menuCache) return this.menuCache;
+  loadMenu: async function(forceRefresh = false, ttlMs = 30000) {
+    const now = Date.now();
+    if (!forceRefresh && this.menuCache && (now - this.menuCacheFetchedAt) < ttlMs) {
+      return this.menuCache;
+    }
     const snap = await getDocs(collection(db, 'menu'));
     const items = [];
     snap.forEach(d => {
@@ -143,6 +235,7 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
       });
     });
     this.menuCache = items;
+    this.menuCacheFetchedAt = now;
     return items;
   },
 
@@ -237,7 +330,9 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
   // Handle general inquiries
   handleInquiry: async function(question) {
     try {
-      const qLower = String(question || '').toLowerCase();
+      // Normalize STT quirks so voice and text behave similarly
+      const normalized = this.normalizeQuestion(question);
+      const qLower = String(normalized || '').toLowerCase();
       // Hard-coded canteen hours intents
       if (/\bwhen\s+does\s+the\s+canteen\s+close\b|\bclosing\s*time\b|\bwhat\s*time\s+do\s+you\s+close\b/i.test(qLower)) {
         return 'The canteen closes at 9:00 PM (21:00).';
@@ -254,11 +349,12 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
           const vegTag = match.veg === 'veg' ? 'veg' : 'non-veg';
           return `${match.itemName} costs ₹${match.cost} (${vegTag}) [${match.category}].`;
         }
-        // fallthrough to normal handling if no match
+        // If no exact match, avoid LLM hallucinations (like $/USD). Ask for clarification.
+        return "I couldn't find that exact item in the menu. Please try again with the exact item name, or ask like: 'Show tiffin items under ₹100'. All prices are in ₹ (INR).";
       }
 
       // First, try to parse structured filters from the question
-      const intent = this.parseQuery(question);
+      const intent = this.parseQuery(qLower);
       if (intent.hasFilter) {
         // Answer directly from the Firestore menu
         const text = await this.answerFromMenu(intent);
@@ -286,9 +382,15 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
       this.addToContext('user', prompt);
       
       // Prepare the full prompt with conversation context
-      const contextPrompt = this.conversationContext
-        .map(msg => `${msg.role}: ${msg.content}`)
-        .join('\n');
+      const systemPreamble = [
+        'system: You are a campus canteen assistant in India.',
+        'system: Always use Indian Rupees (₹, INR) for any prices. Never use $, USD.',
+        'system: Prefer concise, factual answers based on the menu when possible.'
+      ].join('\n');
+      const contextPrompt = [
+        systemPreamble,
+        ...this.conversationContext.map(msg => `${msg.role}: ${msg.content}`)
+      ].join('\n');
       const model = getModel();
       const result = await model.generateContent(contextPrompt);
       const response = result.response.text();
