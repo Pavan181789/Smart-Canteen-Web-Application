@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Navbar from '../components/Navbar';
 import ProfileNavBtn from '../components/buttons/ProfileNavBtn';
 import {
@@ -32,7 +32,6 @@ import {
   getDoc,
   doc,
   onSnapshot,
-  deleteDoc,
   writeBatch,
 } from 'firebase/firestore';
 import { UserAuth } from '../context/AuthContext';
@@ -58,19 +57,19 @@ export default function Orders() {
   useEffect(() => {
     async function fetchWallet() {
       const userData = await getDoc(doc(db, 'users', user.uid));
-      return userData.get('wallet');
+      return setWallet(undefined);
     }
 
     if (!user?.uid) return;
     fetchWallet()
-      .then(data => setWallet(data))
+      .then(data => setWallet(undefined))
       .catch(() => {});
   }, [user?.uid, setWallet]);
 
   useEffect(() => {
     if (!uid) return;
     const q = query(collection(db, 'orders'), where('uid', '==', uid));
-    const unsub = onSnapshot(q, (snap) => {
+    return onSnapshot(q, (snap) => {
       const list = [];
       snap.forEach((d) => {
         const rawTime = d.get('orderTime') || d.get('createdAt');

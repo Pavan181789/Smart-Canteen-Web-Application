@@ -32,10 +32,12 @@ export default function CheckoutList({ toggleToCheckout }) {
   const { user } = UserAuth();
 
   useEffect(() => {
-    getDoc(doc(db, 'users', user.uid)).then(data => {
-      setWallet(data.get('wallet'));
-    });
-  }, []);
+    if (user?.uid) {
+      getDoc(doc(db, 'users', user.uid)).then(data => {
+        setWallet(data.get('wallet'));
+      });
+    }
+  }, [user?.uid, setWallet]);
 
   const pay = () => {
     const orderId = uuid();
@@ -52,6 +54,7 @@ export default function CheckoutList({ toggleToCheckout }) {
     })
       .then(() => {
         setTotalAmt(0);
+        setWallet(wallet - totalAmt);
       })
       .then(() => {
         setLoading({ state: false, loadingText: 'Processing...' });

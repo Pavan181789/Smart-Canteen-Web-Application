@@ -22,6 +22,7 @@ import CartMenu from './CartMenu';
 import { analytics } from '../firebase';
 import { logEvent } from 'firebase/analytics';
 import { useNavigate } from 'react-router-dom';
+import { Activity } from 'lucide-react';
 
 export default function Nav({ title, navBtn, hasCheckout }) {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -58,14 +59,20 @@ export default function Nav({ title, navBtn, hasCheckout }) {
           </ModalFooter>
         </ModalContent>
       </Modal>
-      <Box bg={useColorModeValue('gray.100', 'gray.900')} px={4}>
-        <Flex h={16} alignItems={'center'} justifyContent={'space-between'}>
-          <Text fontSize="2xl" fontWeight="bold">
+      <Box bg={useColorModeValue('gray.100', 'gray.900')} px={{ base: 3, md: 4 }}>
+        <Flex
+          h={{ base: 16, md: 16 }}
+          alignItems={{ base: 'stretch', md: 'center' }}
+          justifyContent={'space-between'}
+          direction={{ base: 'column', md: 'row' }}
+          gap={{ base: 2, md: 0 }}
+        >
+          <Text fontSize={{ base: 'xl', md: '2xl' }} fontWeight="bold">
             {title}
           </Text>
           <Flex alignItems={'center'}>
-            <Stack direction={'row'} spacing={3}>
-              <Button onClick={toggleColorMode} variant="ghost">
+            <Stack direction={'row'} spacing={{ base: 2, md: 3 }}>
+              <Button onClick={toggleColorMode} variant="ghost" size={{ base: 'sm', md: 'md' }}>
                 {colorMode === 'light' ? <FaMoon /> : <FaSun />}
               </Button>
               {user ? (
@@ -73,7 +80,7 @@ export default function Nav({ title, navBtn, hasCheckout }) {
                   {/* Global Menu button */}
                   <Button
                     variant="solid"
-                    size="sm"
+                    size={{ base: 'sm', md: 'sm' }}
                     colorScheme="teal"
                     onClick={() => navigate('/menu')}
                   >
@@ -82,11 +89,21 @@ export default function Nav({ title, navBtn, hasCheckout }) {
                   {/* My Orders button (match Menu style) */}
                   <Button
                     variant="solid"
-                    size="sm"
+                    size={{ base: 'sm', md: 'sm' }}
                     colorScheme="teal"
                     onClick={() => navigate('/orders')}
                   >
                     My Orders
+                  </Button>
+                  {/* Monitoring button */}
+                  <Button
+                    variant="solid"
+                    size={{ base: 'sm', md: 'sm' }}
+                    colorScheme="blue"
+                    onClick={() => navigate('/monitoring')}
+                    leftIcon={<Activity style={{ width: '16px', height: '16px' }} />}
+                  >
+                    Monitoring
                   </Button>
                   {hasCheckout ? <CartMenu /> : null}
                 </>
@@ -100,6 +117,7 @@ export default function Nav({ title, navBtn, hasCheckout }) {
                     bg: 'blue.500',
                   }}
                   onClick={handleSignIn}
+                  size={{ base: 'sm', md: 'md' }}
                 >
                   Sign In
                 </Button>

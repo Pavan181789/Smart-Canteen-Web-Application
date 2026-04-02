@@ -12,6 +12,7 @@ import {
   Grid,
   GridItem,
 } from '@chakra-ui/react';
+import LayoutContainer from '../components/LayoutContainer';
 import QRCode from 'react-qr-code'; // Import the QR code library
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -171,7 +172,8 @@ export default function Payment() {
   };
 
   return (
-    <Box maxW="600px" mx="auto" mt={10} p={6} borderWidth={1} borderRadius="lg" shadow="md">
+    <LayoutContainer>
+    <Box maxW={{ base: '100%', md: '700px' }} mx="auto" mt={{ base: 6, md: 10 }} p={{ base: 4, md: 6 }} borderWidth={1} borderRadius="lg" shadow="md">
       <Heading mb={6} textAlign="center">Checkout</Heading>
 
       {isProceeding ? (
@@ -330,5 +332,6 @@ export default function Payment() {
         </>
       )}
     </Box>
+    </LayoutContainer>
   );
 }

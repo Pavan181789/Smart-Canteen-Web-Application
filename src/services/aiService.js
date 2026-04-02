@@ -1,6 +1,8 @@
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { auth, db, app } from '../firebase';
 import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
+// eslint-disable-next-line no-unused-vars
+import fallbackAI from './fallbackAI';
 
 // Initialize Gemini Developer API (client-side via Firebase AI Logic)
 let _model;
@@ -115,6 +117,13 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
       }
     } catch (error) {
       console.error('Error getting food info:', error);
+      
+      // Handle App Check token errors specifically - use fallback
+      if (error.message && (error.message.includes('App Check token is invalid') || error.message.includes('401'))) {
+        console.log('Using fallback AI for food info due to App Check error');
+        return fallbackAI.getFoodInfo(itemName);
+      }
+      
       throw error;
     }
   },
@@ -341,16 +350,47 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
         return 'The canteen opens at 8:00 AM.';
       }
 
+      // Multilingual price intent detection (English + major Indian languages)
+      // Telugu: ధర, ఎంత, ఖర్చు, రేటు | Hindi: कीमत, दाम, कितना | Tamil: விலை, எவ்வளவு
+      // Kannada: ಬೆಲೆ, ಎಷ್ಟು | Malayalam: വില, എത്ര | Plus common transliterations: kosht/kast, rate, cost
+      const hasPriceIntent = () => {
+        const patterns = [
+          /\b(cost|price|rate|mrp|amount)\b/i,
+          /ధర|ఎంత|ఖర్చు|రేటు/i,           // Telugu
+          /कीमत|दाम|कितना/i,               // Hindi
+          /விலை|எவ்வளவு/i,                 // Tamil
+          /ಬೆಲೆ|ಎಷ್ಟು/i,                     // Kannada
+          /വില|എത്ര/i,                      // Malayalam
+        ];
+        return patterns.some((re) => re.test(question ?? '')) || patterns.some((re) => re.test(qLower));
+      };
+
       // Item price lookup like: "paneer fried rice cost/price"
-      if (/\b(cost|price|rate)\b/i.test(qLower)) {
+      if (hasPriceIntent()) {
         const items = await this.loadMenu();
         const match = this.findBestMenuMatch(qLower, items);
         if (match) {
           const vegTag = match.veg === 'veg' ? 'veg' : 'non-veg';
           return `${match.itemName} costs ₹${match.cost} (${vegTag}) [${match.category}].`;
         }
-        // If no exact match, avoid LLM hallucinations (like $/USD). Ask for clarification.
-        return "I couldn't find that exact item in the menu. Please try again with the exact item name, or ask like: 'Show tiffin items under ₹100'. All prices are in ₹ (INR).";
+        // If no exact match, use the LLM to map multilingual/transliterated item names
+        // to the closest item from our actual menu list. Constrain the model to ONLY
+        // choose from the provided list and to respond in INR.
+        try {
+          const catalog = items.map(i => ({ name: i.itemName, price: i.cost, category: i.category, veg: (i.veg === 'veg' ? 'veg' : 'non-veg') }));
+          const instruction = [
+            'You are helping with a canteen menu lookup. The user asked for price but the item name may be in another language or transliterated.',
+            'You MUST choose the closest matching item strictly from the provided list. If uncertain, choose the best approximate match.',
+            'Respond concisely as: "<Item Name> costs ₹<price> (<veg|non-veg>) [<Category>]." Use ₹ (INR). No other text.',
+          ].join('\n');
+          const prompt = `${instruction}\n\nUser query: ${question}\n\nMenu list (JSON):\n${JSON.stringify(catalog).slice(0, 18000)}`; // guard size
+          const text = await this.generateResponse(prompt);
+          if (text && /₹\s*\d+/u.test(text)) return text;
+        } catch (e) {
+          console.warn('price-intent LLM fallback failed', e);
+        }
+        // Final fallback: guidance
+        return "I couldn't find that exact item. Please try the exact English item name (e.g., 'Chicken Fried Rice price'). Prices are in ₹ (INR).";
       }
 
       // First, try to parse structured filters from the question
@@ -406,7 +446,25 @@ Rules:\n- If there is variability, provide reasonable typical values.\n- Keep ar
       return response;
     } catch (error) {
       console.error('Error generating AI response:', error);
-      throw error;
+      
+      // Handle App Check token errors specifically - use fallback
+      if (error.message && (error.message.includes('App Check token is invalid') || error.message.includes('401'))) {
+        console.log('Using fallback AI due to App Check error');
+        return fallbackAI.generateResponse(prompt);
+      }
+      
+      // Handle network/timeout errors
+      if (error.name === 'TimeoutError' || error.code === 'TIMEOUT') {
+        return 'AI service is taking longer than expected. Please try again or ask our staff for help.';
+      }
+      
+      // Handle quota/rate limit errors
+      if (error.code === 'RESOURCE_EXHAUSTED' || error.message.includes('quota')) {
+        return 'AI service is busy right now. Please try again in a few minutes.';
+      }
+      
+      // Generic fallback
+      return 'I apologize, but I\'m having trouble connecting to the AI service. Please try again or ask our staff at the counter for assistance.';
     }
   },
   

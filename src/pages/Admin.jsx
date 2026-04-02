@@ -9,6 +9,8 @@ import {
   SimpleGrid,
   HStack,
 } from '@chakra-ui/react';
+import LayoutContainer from '../components/LayoutContainer';
+
 import { db } from '../firebase';
 import {
   collection,
@@ -153,105 +155,107 @@ export default function Admin() {
   };
 
   return (
-    <Box p={5}>
-      <Text fontSize="3xl" mb={6}>
-        Admin Dashboard
-      </Text>
-
-      {/* Form to Add New Menu Item */}
-      <VStack spacing={4} mb={8}>
-        <Text fontSize="2xl">Add New Menu Item</Text>
-        <Input
-          placeholder="Item Name"
-          name="itemName"
-          value={form.itemName}
-          onChange={handleFormChange}
-        />
-        <Input
-          placeholder="Price"
-          type="number"
-          name="cost"
-          value={form.cost}
-          onChange={handleFormChange}
-        />
-        <Input
-          placeholder="Image URL"
-          name="thumbnail"
-          value={form.thumbnail}
-          onChange={handleFormChange}
-        />
-        <Select
-          name="category"
-          value={form.category}
-          onChange={handleFormChange}
-        >
-          {MENU_SECTIONS.map((section) => (
-            <option key={section} value={section}>
-              {section}
-            </option>
-          ))}
-        </Select>
-        <Button colorScheme="teal" onClick={addItem}>
-          Add Item
-        </Button>
-      </VStack>
-
-      {/* Menu Items List */}
-      <Box mb={8}>
-        <Text fontSize="2xl" mb={4}>
-          Menu Items
+    <LayoutContainer>
+      <Box p={{ base: 3, md: 5 }}>
+        <Text fontSize="3xl" mb={6}>
+          Admin Dashboard
         </Text>
-        <SimpleGrid columns={[1, 2, 3]} spacing={4}>
-          {menu.map((item) => (
-            <Box key={item.id} p={4} borderWidth="1px" borderRadius="lg">
-              <Text fontWeight="bold">{item.itemName}</Text>
-              <Text>{item.category}</Text>
-              <Text>Price: ${item.cost}</Text>
-              <Button size="sm" mt={2} colorScheme="red" onClick={() => removeItem(item.id)}>
-                Remove
-              </Button>
+
+        {/* Form to Add New Menu Item */}
+        <VStack spacing={4} mb={8}>
+          <Text fontSize="2xl">Add New Menu Item</Text>
+          <Input
+            placeholder="Item Name"
+            name="itemName"
+            value={form.itemName}
+            onChange={handleFormChange}
+          />
+          <Input
+            placeholder="Price"
+            type="number"
+            name="cost"
+            value={form.cost}
+            onChange={handleFormChange}
+          />
+          <Input
+            placeholder="Image URL"
+            name="thumbnail"
+            value={form.thumbnail}
+            onChange={handleFormChange}
+          />
+          <Select
+            name="category"
+            value={form.category}
+            onChange={handleFormChange}
+          >
+            {MENU_SECTIONS.map((section) => (
+              <option key={section} value={section}>
+                {section}
+              </option>
+            ))}
+          </Select>
+          <Button colorScheme="teal" onClick={addItem}>
+            Add Item
+          </Button>
+        </VStack>
+
+        {/* Menu Items List */}
+        <Box mb={8}>
+          <Text fontSize="2xl" mb={4}>
+            Menu Items
+          </Text>
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={{ base: 3, md: 4 }}>
+            {menu.map((item) => (
+              <Box key={item.id} p={4} borderWidth="1px" borderRadius="lg">
+                <Text fontWeight="bold">{item.itemName}</Text>
+                <Text>{item.category}</Text>
+                <Text>Price: ${item.cost}</Text>
+                <Button size="sm" mt={2} colorScheme="red" onClick={() => removeItem(item.id)}>
+                  Remove
+                </Button>
+              </Box>
+            ))}
+          </SimpleGrid>
+        </Box>
+
+        {/* Orders Dashboard */}
+        <Box>
+          <Text fontSize="2xl" mb={4}>
+            Order Management
+          </Text>
+          {['upcoming', 'ongoing', 'completed'].map((status) => (
+            <Box key={status} mb={6}>
+              <Text fontSize="xl">{status[0].toUpperCase() + status.slice(1)} Orders</Text>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={{ base: 3, md: 4 }}>
+                {orders[status].map((order) => (
+                  <Box key={order.id} p={4} borderWidth="1px" borderRadius="lg">
+                    <Text>Order ID: {order.id}</Text>
+                    <Text>Status: {order.status}</Text>
+                    {status === 'upcoming' && (
+                      <HStack mt={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          onClick={() => handleOrderAction(order.id, 'accept')}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          colorScheme="red"
+                          onClick={() => handleOrderAction(order.id, 'reject')}
+                        >
+                          Reject
+                        </Button>
+                      </HStack>
+                    )}
+                  </Box>
+                ))}
+              </SimpleGrid>
             </Box>
           ))}
-        </SimpleGrid>
+        </Box>
       </Box>
-
-      {/* Orders Dashboard */}
-      <Box>
-        <Text fontSize="2xl" mb={4}>
-          Order Management
-        </Text>
-        {['upcoming', 'ongoing', 'completed'].map((status) => (
-          <Box key={status} mb={6}>
-            <Text fontSize="xl">{status[0].toUpperCase() + status.slice(1)} Orders</Text>
-            <SimpleGrid columns={[1, 2, 3]} spacing={4}>
-              {orders[status].map((order) => (
-                <Box key={order.id} p={4} borderWidth="1px" borderRadius="lg">
-                  <Text>Order ID: {order.id}</Text>
-                  <Text>Status: {order.status}</Text>
-                  {status === 'upcoming' && (
-                    <HStack mt={2}>
-                      <Button
-                        size="sm"
-                        colorScheme="green"
-                        onClick={() => handleOrderAction(order.id, 'accept')}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        size="sm"
-                        colorScheme="red"
-                        onClick={() => handleOrderAction(order.id, 'reject')}
-                      >
-                        Reject
-                      </Button>
-                    </HStack>
-                  )}
-                </Box>
-              ))}
-            </SimpleGrid>
-          </Box>
-        ))}
-      </Box>
-    </Box>
+    </LayoutContainer>
   );
 }

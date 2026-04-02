@@ -1,10 +1,28 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "build",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      { "source": "**", "destination": "/index.html" }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Deployment-Environment",
+            "value": "$(DEPLOYMENT_ENVIRONMENT)"
+          },
+          {
+            "key": "X-Deployment-Timestamp",
+            "value": "$(DEPLOYMENT_TIMESTAMP)"
+          }
+        ]
+      }
     ]
   }
 }

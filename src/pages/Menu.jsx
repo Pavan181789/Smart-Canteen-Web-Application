@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Nav from '../components/Navbar';
 import ProfileNavBtn from '../components/buttons/ProfileNavBtn';
 import { Box, Text, SimpleGrid, VStack, HStack, Button, useDisclosure } from '@chakra-ui/react';
@@ -26,7 +26,6 @@ const MENU_SECTIONS = {
 };
 
 export default function Profile() {
-  const [sWidth, setSWidth] = useState(document.body.clientWidth);
   const [menu, setMenu] = useRecoilState(menuAtom);
   const [, setTotalAmt] = useRecoilState(totalAmtAtom); // Removed unused totalAmt
   const [, setWallet] = useRecoilState(walletAtom); // Removed unused wallet
@@ -41,14 +40,6 @@ export default function Profile() {
   // Veg mode: 'all' | 'veg' | 'nonveg'
   const [vegMode, setVegMode] = useState('all');
 
-  // Handle resizing for responsive UI
-  useLayoutEffect(() => {
-    function updateSize() {
-      setSWidth(document.body.clientWidth);
-    }
-    window.addEventListener('resize', updateSize);
-    updateSize();
-  }, []);
 
   // Set document title
   useEffect(() => {
@@ -182,8 +173,8 @@ export default function Profile() {
           {selectedCategory} ({MENU_SECTIONS[selectedCategory]})
         </Text>
         <SimpleGrid
-          columns={sWidth >= 768 ? (sWidth >= 1024 ? 3 : 2) : 1}
-          spacing={6}
+          columns={{ base: 1, md: 2, lg: 3 }}
+          spacing={{ base: 4, md: 5, lg: 6 }}
           w="100%"
         >
           {menu

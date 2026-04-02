@@ -5,7 +5,6 @@ import { BsCart, BsCartFill } from 'react-icons/bs';
 import { MenuList } from '@chakra-ui/react';
 import {
   menu as menuAtom,
-  totalAmt as totalAmtAtom,
   cart as cartAtom,
 } from '../atoms';
 import { useRecoilState } from 'recoil';

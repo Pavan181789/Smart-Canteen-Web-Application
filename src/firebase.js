@@ -20,10 +20,24 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase App Check ASAP (before using other services)
-export const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('6Ld75-MrAAAAAKsvA99UfXcJTt0kHBOZpycAkhsI'),
+// For development: Use debug token to bypass reCAPTCHA issues
+const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+let appCheckConfig = {
   isTokenAutoRefreshEnabled: true,
-});
+};
+
+if (isDevelopment) {
+  // Use debug token for development to avoid reCAPTCHA issues
+  if (typeof window !== 'undefined' && window.self) {
+    window.self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+  appCheckConfig.provider = new ReCaptchaV3Provider('6Ld75-MrAAAAAKsvA99UfXcJTt0kHBOZpycAkhsI');
+} else {
+  // Production configuration
+  appCheckConfig.provider = new ReCaptchaV3Provider('6Ld75-MrAAAAAKsvA99UfXcJTt0kHBOZpycAkhsI');
+}
+
+export const appCheck = initializeAppCheck(app, appCheckConfig);
 
 // Firebase services (after App Check init)
 export const auth = getAuth(app);

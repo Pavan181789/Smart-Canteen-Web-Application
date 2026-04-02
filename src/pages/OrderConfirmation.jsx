@@ -1,5 +1,6 @@
 import { Box, Heading, Text } from '@chakra-ui/react';
 import { Button, Stack } from '@chakra-ui/react';
+import LayoutContainer from '../components/LayoutContainer';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useSetRecoilState } from 'recoil';
@@ -22,20 +23,22 @@ export default function OrderConfirmation() {
   const goHome = () => navigate('/', { replace: true });
 
   return (
-    <Box maxW="600px" mx="auto" mt={10} p={6} borderWidth={1} borderRadius="lg" shadow="md">
-      <Heading mb={6} textAlign="center">Order Confirmation</Heading>
-      <Text fontSize="lg">
-        Thank you for your order! Your order has been successfully placed. You will receive a confirmation email shortly.
-      </Text>
+    <LayoutContainer>
+      <Box maxW={{ base: '100%', md: '700px' }} mx="auto" mt={{ base: 6, md: 10 }} p={{ base: 4, md: 6 }} borderWidth={1} borderRadius="lg" shadow="md">
+        <Heading mb={6} textAlign="center">Order Confirmation</Heading>
+        <Text fontSize="lg">
+          Thank you for your order! Your order has been successfully placed. You will receive a confirmation email shortly.
+        </Text>
 
-      <Stack direction={{ base: 'column', sm: 'row' }} spacing={4} mt={8} justify="center">
-        <Button colorScheme="teal" onClick={goToMenu}>
-          Back to Menu
-        </Button>
-        <Button variant="outline" onClick={goHome}>
-          Go to Home
-        </Button>
-      </Stack>
-    </Box>
+        <Stack direction={{ base: 'column', sm: 'row' }} spacing={4} mt={8} justify="center">
+          <Button colorScheme="teal" onClick={goToMenu}>
+            Back to Menu
+          </Button>
+          <Button variant="outline" onClick={goHome}>
+            Go to Home
+          </Button>
+        </Stack>
+      </Box>
+    </LayoutContainer>
   );
 }

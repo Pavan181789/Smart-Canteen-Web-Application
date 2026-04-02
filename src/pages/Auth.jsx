@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { analytics } from '../firebase';
 import { logEvent } from 'firebase/analytics';
+import LayoutContainer from '../components/LayoutContainer';
 
 export default function Auth() {
   const { googleSignIn, user, signInWithEmailAndPassword } = UserAuth();
@@ -77,62 +78,64 @@ export default function Auth() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-      <Stack minH={'100vh'} direction={{ base: 'column', md: 'row' }}>
-        <Flex p={8} flex={1} align={'center'} justify={'center'}>
-          <Stack spacing={4} w={'full'} maxW={'md'} align={'center'}>
-            <Heading fontSize={'3xl'}>Sign in to ScanToEat account</Heading>
-            <Text fontSize={'lg'} color={'gray.600'}>
-              Use your{' '}
-              <Text as="span" color="blue.600">
-                <a
-                  href="https://siesgst.edu.in/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  SIES
-                </a>
-              </Text>{' '}
-              google account or your email credentials to login!
-            </Text>
-            <GoogleAuthBtn onClick={handleGoogleSignIn} />
-            <Text>or</Text>
-            <FormControl id="email">
-              <FormLabel>Email Address</FormLabel>
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </FormControl>
-            <FormControl id="password">
-              <FormLabel>Password</FormLabel>
-              <Input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </FormControl>
-            <Button
-              colorScheme="blue"
-              width="full"
-              onClick={handleEmailPasswordLogin}
-            >
-              Login
-            </Button>
-          </Stack>
-        </Flex>
-        <Flex flex={1}>
-          <Image
-            alt={'Login Image'}
-            objectFit={'cover'}
-            src={
-              'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1352&q=80'
-            }
-          />
-        </Flex>
-      </Stack>
+      <LayoutContainer>
+        <Stack minH={'60vh'} direction={{ base: 'column', md: 'row' }}>
+          <Flex p={{ base: 4, md: 8 }} flex={1} align={'center'} justify={'center'}>
+            <Stack spacing={4} w={'full'} maxW={'md'} align={'center'}>
+              <Heading fontSize={'3xl'}>Sign in to ScanToEat account</Heading>
+              <Text fontSize={'lg'} color={'gray.600'}>
+                Use your{' '}
+                <Text as="span" color="blue.600">
+                  <a
+                    href="https://siesgst.edu.in/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    SIES
+                  </a>
+                </Text>{' '}
+                google account or your email credentials to login!
+              </Text>
+              <GoogleAuthBtn onClick={handleGoogleSignIn} />
+              <Text>or</Text>
+              <FormControl id="email">
+                <FormLabel>Email Address</FormLabel>
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </FormControl>
+              <FormControl id="password">
+                <FormLabel>Password</FormLabel>
+                <Input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </FormControl>
+              <Button
+                colorScheme="blue"
+                width="full"
+                onClick={handleEmailPasswordLogin}
+              >
+                Login
+              </Button>
+            </Stack>
+          </Flex>
+          <Flex flex={1} mt={{ base: 4, md: 0 }}>
+            <Image
+              alt={'Login Image'}
+              objectFit={'cover'}
+              src={
+                'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1352&q=80'
+              }
+            />
+          </Flex>
+        </Stack>
+      </LayoutContainer>
     </>
   );
 }

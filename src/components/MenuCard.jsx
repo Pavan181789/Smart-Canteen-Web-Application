@@ -16,48 +16,52 @@ export default function MenuCard({
   const isVeg = tag === 'veg';
 
   return (
-    <Box key={item.id} bg="blue.800" h="100%" rounded="10px">
-      <HStack>
+    <Box key={item.id} bg="blue.800" h="100%" rounded="10px" overflow="hidden">
+      <HStack align="stretch" spacing={[2, 3]} p={[2, 3]}>
         <Image
           src={item.thumbnail}
-          borderLeftRadius="10px"
-          boxSize="120px"
+          borderRadius="8px"
+          boxSize={["72px", "96px", "120px"]}
+          minW={["72px", "96px", "120px"]}
+          objectFit="cover"
           cursor={onInfoClick ? 'pointer' : 'default'}
           onClick={onInfoClick ? () => onInfoClick(item) : undefined}
           alt={item.itemName}
         />
-        <VStack alignItems="start" p="3" w="full">
+        <VStack alignItems="start" spacing={[1, 2]} w="full">
           <HStack w="full" justifyContent="space-between" alignItems="start">
-            <Text fontSize={['xl', '2xl']} color="white" fontWeight="bold">
+            <Text fontSize={["md", "lg", "xl"]} color="white" fontWeight="bold" noOfLines={2}>
               {item.itemName}
             </Text>
-            <Badge colorScheme={isVeg ? 'green' : 'red'} rounded="full" px={2} py={0.5} fontSize="0.75rem">
+            <Badge colorScheme={isVeg ? 'green' : 'red'} rounded="full" px={[2, 2]} py={[0.5, 0.5]} fontSize={["0.6rem", "0.7rem"]}>
               {isVeg ? 'Veg' : 'Non-veg'}
             </Badge>
           </HStack>
           <Text
-            fontSize={['md', 'lg', 'xl']}
-            color="gray.400"
-            fontWeight="medium"
+            fontSize={["sm", "md", "lg"]}
+            color="gray.300"
+            fontWeight="semibold"
             align="left"
           >
             ₹{item.cost}.00
           </Text>
         </VStack>
         {forCart ? (
-          <HStack align="center" pr="3">
+          <VStack align="center" justify="center" pr={[1, 2]} spacing={[1, 2]}>
             <IconButton
               onClick={() => incrementCart(item.id)}
-              size="sm"
+              size={["xs", "sm"]}
               icon={<FaPlus />}
-            ></IconButton>
-            <Text fontSize="md">{item.count}</Text>
+              aria-label="Add"
+            />
+            <Text fontSize={["sm", "md"]}>{item.count}</Text>
             <IconButton
               onClick={() => decrementCart(item.id)}
-              size="sm"
+              size={["xs", "sm"]}
               icon={<FaMinus />}
-            ></IconButton>
-          </HStack>
+              aria-label="Remove"
+            />
+          </VStack>
         ) : null}
       </HStack>
     </Box>

@@ -15,6 +15,8 @@ import Payment from './pages/Payment';
 import OrderConfirmation from './pages/OrderConfirmation';
 import NotFound from './pages/NotFound';
 import Protected from './components/Protected';
+import MonitoringPage from './pages/MonitoringPage';
+import MonitoringTest from './monitoring/test/MonitoringTest';
 
 const container = document.getElementById('root');
 const root = ReactDOM.createRoot(container);
@@ -67,6 +69,22 @@ const router = createBrowserRouter(
             </Protected>
           ),
         },
+        {
+          path: 'monitoring',
+          element: (
+            <Protected>
+              <MonitoringPage />
+            </Protected>
+          ),
+        },
+        {
+          path: 'monitoring-test',
+          element: (
+            <Protected>
+              <MonitoringTest />
+            </Protected>
+          ),
+        },
         { path: '*', element: <NotFound /> },
       ],
     },
@@ -88,4 +106,4 @@ root.render(
   </StrictMode>
 );
 
-serviceWorkerRegistration.register();
+serviceWorkerRegistration.unregister();
