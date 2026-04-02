@@ -1,0 +1,67 @@
+%% System Architecture Diagram
+%%{init: {
+%%  "theme": "base",
+%%  "themeVariables": {
+%%    "primaryColor": "#E6F0FF",
+%%    "primaryTextColor": "#0b1020",
+%%    "primaryBorderColor": "#1E40AF",
+%%    "secondaryColor": "#ECFDF5",
+%%    "tertiaryColor": "#FEF9C3",
+%%    "lineColor": "#1f2937",
+%%    "clusterBkg": "#F8FAFC",
+%%    "clusterBorder": "#475569",
+%%    "noteBkgColor": "#FFFBEB",
+%%    "noteTextColor": "#111827",
+%%    "fontSize": "16px",
+%%    "fontFamily": "Inter, Segoe UI, Roboto, Arial"
+%%  }
+%%}}%%
+flowchart LR
+  subgraph UserDevice["User Device (Browser)"]
+    UI["React UI + Chakra<br/>components, pages"]
+    SW["Service Worker<br/>service-worker.js"]
+    Speech["Web Speech API<br/>(STT/TTS)"]
+  end
+
+  subgraph FrontendApp["Frontend (src/)"]
+    FirebaseInit["firebase.js<br/>App + App Check + Auth/DB"]
+    AIService["aiService.js<br/>Gemini + Firestore"]
+  end
+
+  subgraph Firebase["Firebase Project"]
+    Hosting["Firebase Hosting"]
+    Auth["Firebase Auth"]
+    Firestore[("Cloud Firestore<br/>menu, orders, users")]
+    Functions["Cloud Functions"]
+    AppCheck["App Check"]
+    Analytics["Analytics"]
+    FAI["Firebase AI (Gemini)"]
+    Vertex["Vertex AI (via Functions)"]
+  end
+
+  %% spacer nodes to widen lanes and reduce edge overlaps
+  U_DB(( ))
+  U_FUNC(( ))
+  style U_DB fill:#0000,stroke:#0000
+  style U_FUNC fill:#0000,stroke:#0000
+
+  UI --> |login| Auth
+  UI --> U_DB
+  U_DB --> |fetch/update| Firestore
+  UI --> |deploy| Hosting
+  SW --> Hosting
+  Speech --> UI
+
+  UI --> |user messages| AIService
+  AIService --> U_FUNC
+  U_FUNC --> |generateContent| FAI
+  AIService --> |read menu| Firestore
+
+  Functions --> |Auth triggers| Auth
+  Functions --> |admin writes| Firestore
+  Functions --> |callable generateText| Vertex
+
+  FirebaseInit -.config .- Auth
+  FirebaseInit -.config .- Firestore
+  FirebaseInit -.config .- AppCheck
+  FirebaseInit -.config .- Analytics

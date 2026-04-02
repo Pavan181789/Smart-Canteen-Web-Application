@@ -1,0 +1,54 @@
+%% Website Working Architecture
+%%{init: {
+%%  "theme": "base",
+%%  "themeVariables": {
+%%    "primaryColor": "#EEF2FF",
+%%    "primaryTextColor": "#0f172a",
+%%    "primaryBorderColor": "#6366F1",
+%%    "secondaryColor": "#F1F5F9",
+%%    "tertiaryColor": "#FEF3C7",
+%%    "lineColor": "#334155",
+%%    "fontSize": "14px",
+%%    "fontFamily": "Inter, Segoe UI, Roboto, Arial"
+%%  }
+%%}}%%
+flowchart TB
+  App["src/App.js<br/>routes/layout"] --> Pages
+  App --> Navbar["src/components/Navbar.jsx"]
+  App --> Chatbot["src/components/Chatbot.jsx"]
+
+  subgraph Pages
+    Landing["src/components/Landing.jsx"]
+    MenuPage["src/pages/Menu.jsx"]
+    Orders["src/components/Orders.jsx"]
+    CheckoutList["src/components/CheckoutList.jsx"]
+    Payment["src/pages/Payment.jsx"]
+    OrderConf["src/pages/OrderConfirmation.jsx"]
+    LiveOrders["src/components/LiveOrders.jsx"]
+  end
+
+  subgraph Components
+    MenuCard["src/components/MenuCard.jsx"]
+    CartMenu["src/components/CartMenu.jsx"]
+    CartMenuList["src/components/CartMenuList.jsx"]
+    Buttons["src/components/buttons/*.jsx"]
+    FoodInfoModal["src/components/FoodInfoModal.jsx"]
+  end
+
+  subgraph Context
+    AuthCtx["src/context/AuthContext.js"]
+  end
+
+  subgraph Services
+    AIService["src/services/aiService.js"]
+  end
+
+  Pages --> Components
+  App --> AuthCtx
+  Pages --> Services
+  Chatbot --> Services
+
+  Services --> Firestore[("Firestore")]
+  Services --> AI["Firebase AI (Gemini)"]
+  Buttons --> Auth["Auth"]
+  App --> SW["src/serviceWorkerRegistration.js"]

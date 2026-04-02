@@ -1,0 +1,50 @@
+%% Chatbot Voice/Text Workflow
+%%{init: {
+%%  "theme": "base",
+%%  "themeVariables": {
+%%    "primaryColor": "#E3F2FD",
+%%    "primaryTextColor": "#0f172a",
+%%    "primaryBorderColor": "#1D4ED8",
+%%    "secondaryColor": "#F1F5F9",
+%%    "tertiaryColor": "#FFF7ED",
+%%    "lineColor": "#334155",
+%%    "fontSize": "14px",
+%%    "fontFamily": "Inter, Segoe UI, Roboto, Arial"
+%%  }
+%%}}%%
+sequenceDiagram
+  participant U as User
+  participant C as Chatbot.jsx
+  participant STT as Web Speech API
+  participant S as aiService.js
+  participant DB as Firestore (menu, orders)
+  participant G as Firebase AI (Gemini)
+
+  U->>C: Type or Click Mic
+  alt Voice
+    C->>STT: start(recognitionLang, interim/auto-stop)
+    STT-->>C: final transcript (input filled)
+  end
+  C->>S: handleInquiry(text, {lang})
+
+  S->>S: normalize + parse intent
+  alt Price intent
+    S->>DB: loadMenu()
+    DB-->>S: menu items
+    S->>S: findBestMenuMatch (synonyms+fuzzy)
+    alt matched
+      S-->>C: Localized INR price (from Firestore)
+    else no match
+      S-->>C: Clarify (safe, INR)
+    end
+  else Filters (veg/section/price)
+    S->>DB: loadMenu()
+    DB-->>S: items
+    S-->>C: Grouped items text (localized)
+  else General Q
+    S->>G: generateContent (INR + language rule)
+    G-->>S: answer
+    S-->>C: response
+  end
+
+  C-->>U: Render bubbles (bold ** → <strong>)

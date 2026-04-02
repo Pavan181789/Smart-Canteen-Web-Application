@@ -1,0 +1,50 @@
+%% Data Schema (ER)
+%%{init: {
+%%  "theme": "base",
+%%  "themeVariables": {
+%%    "primaryColor": "#F0F9FF",
+%%    "primaryTextColor": "#0f172a",
+%%    "primaryBorderColor": "#0EA5E9",
+%%    "lineColor": "#334155",
+%%    "fontSize": "14px",
+%%    "fontFamily": "Inter, Segoe UI, Roboto, Arial"
+%%  }
+%%}}%%
+erDiagram
+  users {
+    string uid PK
+    string displayName
+    string email
+    string photoURL
+    timestamp creationTime
+    number wallet
+  }
+
+  menu {
+    string id PK
+    string itemName
+    number cost
+    string thumbnail
+    string category
+    string veg
+  }
+
+  orders {
+    string id PK
+    string uid FK
+    json orders
+    timestamp createdAt
+    number total
+    string status
+  }
+
+  ai_chats {
+    string id PK
+    string userId FK
+    string question
+    string response
+    timestamp timestamp
+  }
+
+  users ||--o{ orders : places
+  users ||--o{ ai_chats : chats
